@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Uttamhub | Smart CSV Converter</title>
+    <style>
+        :root { --primary: #2563eb; --bg: #0f172a; --card: #1e293b; --text: #f8fafc; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+        .container { max-width: 900px; margin: auto; }
+        .card { background: var(--card); padding: 25px; border-radius: 12px; }
+        textarea { width: 100%; height: 180px; background: #000; color: #10b981; border: 1px solid #334155; border-radius: 8px; padding: 12px; font-family: monospace; margin-bottom: 10px; }
+        .btn-group { display: flex; gap: 10px; margin: 10px 0 20px 0; }
+        button { padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-fetch { background: #8b5cf6; color: white; }
+        .btn-convert { background: var(--primary); color: white; flex: 1; }
+        .btn-copy { background: #475569; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h2>Uttamhub CSV Converter</h2>
+        <p>Paste your **CSV Data** OR your **Google Sheets Link** below:</p>
+        
+        <textarea id="csvInput" placeholder="Paste data here..."></textarea>
+
+        <div class="btn-group">
+            <button class="btn-fetch" onclick="fetchFromUrl()">Fetch from Link</button>
+            <button class="btn-convert" onclick="processCSV()">Generate database.js</button>
+            <button class="btn-copy" onclick="copyCode()">Copy Code</button>
+        </div>
+
+        <textarea id="output" readonly placeholder="Resulting code..."></textarea>
+    </div>
+</div>
+
+<script>
+    // New function to handle links directly!
+    async function fetchFromUrl() {
+        const url = document.getElementById('csvInput').value.trim();
+        if (!url.startsWith('http')) return alert("Please paste a valid URL first.");
+        
+        try {
+            const response = await fetch(url);
+            const text = await response.text();
+            document.getElementById('csvInput').value = text; 
+            alert("Data loaded successfully! Now click 'Generate'.");
+        } catch (error) {
+            alert("Error fetching data. Make sure your Google Sheet is 'Published to the Web' as a CSV.");
+        }
+    }
+
+    function processCSV() {
+        const input = document.getElementById('csvInput').value.trim();
+        const rows = input.split('\n');
+        
+        const col = {
+            id: 0, sku: 1, name: 2, cat: 3, sub: 4, tagweb: 5, brand: 6,
+            attrN: 7, attrV: 8, tagline: 9, desc: 10, other: 11,
+            mrp: 12, sale: 13, stock: 14, min: 15, isKit: 16, kitN: 17, kitC: 18,
+            key: 19, trend: 20, deli: 21, imgStart: 22, imgEnd: 31, vid: 32
+        };
+
+        const result = rows.slice(1).map(row => {
+            const data = row.split(/[,;](?=(?:(?:[^"]*"){2})*[^"]*$)/).map(item => item.trim().replace(/^"|"$/g, ''));
+            if (data.length < 5) return null;
+
+            const imgs = [];
+            for (let j = col.imgStart; j <= col.imgEnd; j++) { if (data[j]) imgs.push(data[j]); }
+
+            return {
+                "id": data[col.id] || "",
+                "sku": data[col.sku] || "",
+                "name": data[col.name] || "",
+                "category": data[col.cat] || "",
+                "subcategory": data[col.sub] || "",
+                "tagweb": data[col.tagweb] || "",
+                "brand": data[col.brand] || "",
+                "attrName": data[col.attrN] || "",
+                "attrValue": data[col.attrV] || "",
+                "tagline": data[col.tagline] || "",
+                "description": data[col.desc] || "",
+                "otherDetails": data[col.other] || "",
+                "mrp": data[col.mrp] || "",
+                "sale": data[col.sale] || "",
+                "stock": data[col.stock] || "",
+                "minOrder": data[col.min] || "",
+                "isKit": data[col.isKit] || "FALSE",
+                "kitName": data[col.kitN] || "",
+                "kitComponents": data[col.kitC] || "",
+                "keyword": data[col.key] || "",
+                "trending": data[col.trend] || "FALSE",
+                "delivery": data[col.deli] || "",
+                "images": imgs,
+                "vid": data[col.vid] || ""
+            };
+        }).filter(p => p !== null);
+
+        document.getElementById('output').value = `window.allProducts = ${JSON.stringify(result, null, 2)};\n\nwindow.dispatchEvent(new Event('db_ready'));`;
+    }
+
+    function copyCode() {
+        document.getElementById('output').select();
+        document.execCommand('copy');
+        alert("Copied!");
+    }
+</script>
+</body>
+</html>
